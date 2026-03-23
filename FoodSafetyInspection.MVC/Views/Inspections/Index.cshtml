@@ -1,0 +1,30 @@
+﻿@model IEnumerable<FoodSafetyInspection.Domain.Inspection>
+@{
+    ViewData["Title"] = "Inspections";
+}
+<h1>Inspections</h1>
+<p><a asp-action="Create" class="btn btn-success">+ New Inspection</a></p>
+<table class="table table-hover">
+    <thead class="table-dark">
+        <tr><th>Premises</th><th>Date</th><th>Score</th><th>Outcome</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>@item.Premises?.Name</td>
+                <td>@item.InspectionDate.ToShortDateString()</td>
+                <td>@item.Score</td>
+                <td>
+                    <span class="badge @(item.Outcome == FoodSafetyInspection.Domain.InspectionOutcome.Pass ? "bg-success" : "bg-danger")">
+                        @item.Outcome
+                    </span>
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-info">Details</a>
+                    <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-warning">Edit</a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

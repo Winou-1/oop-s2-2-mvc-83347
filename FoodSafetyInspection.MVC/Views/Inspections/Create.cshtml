@@ -1,0 +1,62 @@
+﻿@model FoodSafetyInspection.Domain.Inspection
+@{
+    ViewData["Title"] = "New Inspection";
+    // Force la date par défaut si vide
+    if (Model.InspectionDate == default)
+        Model.InspectionDate = DateTime.Today;
+}
+
+<h1>New Inspection</h1>
+<hr />
+
+@* CHANGE ModelOnly → All pour voir TOUTES les erreurs *@
+<div asp-validation-summary="All" class="text-danger mb-3"></div>
+
+<div class="row">
+    <div class="col-md-5">
+        <form asp-action="Create">
+
+            <div class="mb-3">
+                <label asp-for="PremisesId" class="form-label">Premises</label>
+                <select asp-for="PremisesId" class="form-select"
+                        asp-items="ViewBag.PremisesId">
+                </select>
+                <span asp-validation-for="PremisesId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="InspectionDate" class="form-label"></label>
+                @* asp-for gère la valeur, pas besoin de value= *@
+                <input asp-for="InspectionDate" type="date" class="form-control" />
+                <span asp-validation-for="InspectionDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Score" class="form-label">Score (0–100)</label>
+                <input asp-for="Score" type="number" min="0" max="100" class="form-control" />
+                <span asp-validation-for="Score" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Outcome" class="form-label"></label>
+                <select asp-for="Outcome" class="form-select"
+                        asp-items="Html.GetEnumSelectList<FoodSafetyInspection.Domain.InspectionOutcome>()">
+                </select>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Notes" class="form-label"></label>
+                <textarea asp-for="Notes" class="form-control" rows="3"></textarea>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

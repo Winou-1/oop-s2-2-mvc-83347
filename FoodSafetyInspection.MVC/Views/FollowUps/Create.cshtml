@@ -1,0 +1,45 @@
+﻿@model FoodSafetyInspection.Domain.FollowUp
+@{
+    ViewData["Title"] = "New Follow-Up";
+}
+
+<h1>New Follow-Up</h1>
+<hr />
+<div class="row">
+    <div class="col-md-5">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+
+            <div class="mb-3">
+                <label asp-for="InspectionId" class="form-label">Inspection</label>
+                <select asp-for="InspectionId" class="form-select"
+                        asp-items="ViewBag.InspectionId">
+                    <option value="">-- Select Inspection --</option>
+                </select>
+                <span asp-validation-for="InspectionId" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="DueDate" class="form-label"></label>
+                <input asp-for="DueDate" type="date" class="form-control" />
+                <span asp-validation-for="DueDate" class="text-danger"></span>
+            </div>
+
+            <div class="mb-3">
+                <label asp-for="Status" class="form-label"></label>
+                <select asp-for="Status" class="form-select"
+                        asp-items="Html.GetEnumSelectList<FoodSafetyInspection.Domain.FollowUpStatus>()">
+                </select>
+            </div>
+
+            <button type="submit" class="btn btn-primary">Create</button>
+            <a asp-action="Index" class="btn btn-outline-secondary">Cancel</a>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+}

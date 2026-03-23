@@ -1,0 +1,42 @@
+﻿@model IEnumerable<FoodSafetyInspection.Domain.FollowUp>
+@{
+    ViewData["Title"] = "Follow-Ups";
+}
+<h1>Follow-Ups</h1>
+
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+<p><a asp-action="Create" class="btn btn-success">+ New Follow-Up</a></p>
+<table class="table table-hover">
+    <thead class="table-dark">
+        <tr><th>Premises</th><th>Inspection Date</th><th>Due Date</th><th>Status</th><th></th></tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            var overdue = item.Status == FoodSafetyInspection.Domain.FollowUpStatus.Open && item.DueDate < DateTime.Today;
+            <tr class="@(overdue ? "table-danger" : "")">
+                <td>@item.Inspection?.Premises?.Name</td>
+                <td>@item.Inspection?.InspectionDate.ToShortDateString()</td>
+                <td>@item.DueDate.ToShortDateString()</td>
+                <td>
+                    <span class="badge @(item.Status == FoodSafetyInspection.Domain.FollowUpStatus.Closed ? "bg-success" : overdue ? "bg-danger" : "bg-warning text-dark")">
+                        @(overdue ? "OVERDUE" : item.Status.ToString())
+                    </span>
+                </td>
+                <td>
+                    @if (item.Status == FoodSafetyInspection.Domain.FollowUpStatus.Open)
+                    {
+                        <form asp-action="Close" asp-route-id="@item.Id" method="post" style="display:inline">
+                            @Html.AntiForgeryToken()
+                            <button class="btn btn-sm btn-success">Close</button>
+                        </form>
+                    }
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>

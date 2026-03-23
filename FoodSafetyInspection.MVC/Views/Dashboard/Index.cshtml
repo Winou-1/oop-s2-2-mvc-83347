@@ -1,0 +1,58 @@
+﻿@model FoodSafetyInspection.MVC.Models.DashboardViewModel
+@using FoodSafetyInspection.Domain
+@{
+    ViewData["Title"] = "Dashboard";
+}
+<h1>Dashboard</h1>
+
+<form method="get" class="row g-2 mb-4">
+    <div class="col-md-3">
+        <select name="town" class="form-select">
+            <option value="">All Towns</option>
+            @foreach (var t in Model.Towns)
+            {
+                <option value="@t" selected="@(t == Model.FilterTown)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-3">
+        <select name="riskRating" class="form-select">
+            <option value="">All Risk Ratings</option>
+            @foreach (RiskRating r in Enum.GetValues(typeof(RiskRating)))
+            {
+                <option value="@r" selected="@(r == Model.FilterRiskRating)">@r</option>
+            }
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
+<div class="row g-3">
+    <div class="col-md-4">
+        <div class="card text-bg-primary">
+            <div class="card-body">
+                <h5 class="card-title">Inspections This Month</h5>
+                <p class="display-4">@Model.InspectionsThisMonth</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-danger">
+            <div class="card-body">
+                <h5 class="card-title">Failed This Month</h5>
+                <p class="display-4">@Model.FailedThisMonth</p>
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card text-bg-warning">
+            <div class="card-body">
+                <h5 class="card-title">Overdue Follow-Ups</h5>
+                <p class="display-4">@Model.OverdueFollowUps</p>
+            </div>
+        </div>
+    </div>
+</div>
