@@ -8,7 +8,7 @@ on:
 
 env:
   DOTNET_VERSION: "10.0.x"
-  TEST_PROJECT: "FoodSafety.Tests/FoodSafety.Tests.csproj"
+  TEST_PROJECT: "FoodSafetyInspection.Tests/FoodSafetyInspection.Tests.csproj"
 
 jobs:
   build-and-test:
