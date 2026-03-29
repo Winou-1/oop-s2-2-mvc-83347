@@ -1,7 +1,9 @@
 ﻿using FoodSafetyInspection.Domain;
 using FoodSafetyInspection.MVC.Data;
 using FoodSafety.MVC.Controllers;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.ViewFeatures;
 using Microsoft.EntityFrameworkCore;
 
 namespace FoodSafety.Tests;
@@ -11,6 +13,16 @@ public class Tests
     private static ApplicationDbContext CreateCtx() =>
         new(new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseInMemoryDatabase(Guid.NewGuid().ToString()).Options);
+
+    private class FakeTempDataProvider : ITempDataProvider
+    {
+        public IDictionary<string, object?> LoadTempData(HttpContext context) => new Dictionary<string, object?>();
+        public void SaveTempData(HttpContext context, IDictionary<string, object?> values) { }
+    }
+
+    private static ITempDataDictionary MakeTempData() =>
+        new TempDataDictionary(new DefaultHttpContext(), new FakeTempDataProvider());
+
 
     private static async Task<(Premises premises, Inspection inspection)> SeedBasicAsync(ApplicationDbContext ctx)
     {
@@ -30,6 +42,7 @@ public class Tests
 
         return (premises, inspection);
     }
+
 
     [Fact]
     public async Task OverdueFollowUps_ReturnsOnlyOpenAndPastDueDate()
@@ -98,11 +111,12 @@ public class Tests
         await using var ctx = CreateCtx();
         var (_, inspection) = await SeedBasicAsync(ctx);
 
-        var followUpDueDate = DateTime.Today.AddDays(-15); 
+        var followUpDueDate = DateTime.Today.AddDays(-15);
         var isInvalid = followUpDueDate < inspection.InspectionDate;
 
         Assert.True(isInvalid);
     }
+
 
     [Fact]
     public async Task PremisesController_Index_ReturnsAllPremises()
@@ -167,6 +181,7 @@ public class Tests
         var (premises, _) = await SeedBasicAsync(ctx);
 
         var controller = new PremisesController(ctx);
+        controller.TempData = MakeTempData();
         var result = await controller.DeleteConfirmed(premises.Id) as RedirectToActionResult;
 
         Assert.Equal("Index", result!.ActionName);
