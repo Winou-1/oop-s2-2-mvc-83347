@@ -308,6 +308,7 @@ public class Tests
         await ctx.SaveChangesAsync();
 
         var controller = new FollowUpsController(ctx);
+        controller.TempData = MakeTempData();
         var result = await controller.Close(followUp.Id) as RedirectToActionResult;
 
         Assert.Equal("Index", result!.ActionName);
