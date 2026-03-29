@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<RunSettings>
+  <DataCollectionRunSettings>
+    <DataCollectors>
+      <DataCollector friendlyName="XPlat Code Coverage">
+        <Configuration>
+          <Exclude>
+            [*]*.Migrations.*,
+            [*]AspNetCoreGeneratedDocument.*,
+            [*]Program,
+            [*]FoodSafetyInspection.MVC.Views.*
+          </Exclude>
+          <ExcludeByFile>
+            **/Migrations/**/*.cs,
+            **/Views/**/*.cs,
+            **/wwwroot/**
+          </ExcludeByFile>
+        </Configuration>
+      </DataCollector>
+    </DataCollectors>
+  </DataCollectionRunSettings>
+</RunSettings>
