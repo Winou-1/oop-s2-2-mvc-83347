@@ -15,7 +15,9 @@ public class PremisesController(ApplicationDbContext context) : Controller
         var query = context.Premises.AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(p => p.Name.Contains(search) || p.Address.Contains(search));
+            query = query.Where(p =>
+                EF.Functions.Like(p.Name, $"%{search}%") ||
+                EF.Functions.Like(p.Address, $"%{search}%"));
 
         if (!string.IsNullOrWhiteSpace(town))
             query = query.Where(p => p.Town == town);
@@ -47,6 +49,7 @@ public class PremisesController(ApplicationDbContext context) : Controller
         if (id is null) return NotFound();
         var premises = await context.Premises
             .Include(p => p.Inspections)
+                .ThenInclude(i => i.FollowUps)
             .FirstOrDefaultAsync(p => p.Id == id);
         return premises is null ? NotFound() : View(premises);
     }

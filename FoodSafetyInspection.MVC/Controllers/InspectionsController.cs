@@ -19,7 +19,9 @@ public class InspectionsController(ApplicationDbContext context) : Controller
         var query = context.Inspections.Include(i => i.Premises).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
-            query = query.Where(i => i.Premises.Name.Contains(search) || (i.Notes != null && i.Notes.Contains(search)));
+            query = query.Where(i =>
+                EF.Functions.Like(i.Premises.Name, $"%{search}%") ||
+                (i.Notes != null && EF.Functions.Like(i.Notes, $"%{search}%")));
 
         if (outcome.HasValue)
             query = query.Where(i => i.Outcome == outcome.Value);

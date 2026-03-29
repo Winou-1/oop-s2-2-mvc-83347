@@ -1,48 +1,166 @@
 ﻿@model FoodSafetyInspection.Domain.Inspection
-
+@using FoodSafetyInspection.Domain
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Inspection – " + Model.Premises?.Name;
+    bool isAdmin = User.IsInRole("Admin");
+    bool canEdit = User.IsInRole("Admin") || User.IsInRole("Inspector");
+    var daysAgo = (DateTime.Today - Model.InspectionDate).Days;
+    var scoreColor = Model.Score >= 75 ? "bg-success" : Model.Score >= 50 ? "bg-warning" : "bg-danger";
+    var openFu = Model.FollowUps.Count(f => f.Status == FollowUpStatus.Open);
+    var overdueFu = Model.FollowUps.Count(f => f.Status == FollowUpStatus.Open && f.DueDate < DateTime.Today);
 }
 
-<h1>Details</h1>
-
-<div>
-    <h4>Inspection</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Premises)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Premises.Address)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.InspectionDate)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.InspectionDate)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Score)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Score)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Outcome)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Outcome)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Notes)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Notes)
-        </dd>
-    </dl>
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <h1>Inspection — @Model.Premises?.Name</h1>
+    @* Add Follow-Up: Inspector and Admin only *@
+    @if (canEdit)
+    {
+        <a asp-controller="FollowUps" asp-action="Create" asp-route-inspectionId="@Model.Id"
+           class="btn btn-success">+ Add Follow-Up</a>
+    }
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+<hr />
+
+<div class="row mb-4">
+    <div class="col-md-6">
+        <dl class="row">
+            <dt class="col-sm-4">Premises</dt>
+            <dd class="col-sm-8">
+                <a asp-controller="Premises" asp-action="Details" asp-route-id="@Model.PremisesId">
+                    @Model.Premises?.Name
+                </a>
+            </dd>
+
+            <dt class="col-sm-4">Date</dt>
+            <dd class="col-sm-8">
+                @Model.InspectionDate.ToShortDateString()
+                <span class="text-muted small ms-1">(@daysAgo day(s) ago)</span>
+            </dd>
+
+            <dt class="col-sm-4">Outcome</dt>
+            <dd class="col-sm-8">
+                <span class="badge @(Model.Outcome == InspectionOutcome.Pass ? "bg-success" : "bg-danger") fs-6">
+                    @Model.Outcome
+                </span>
+            </dd>
+
+            <dt class="col-sm-4">Notes</dt>
+            <dd class="col-sm-8 text-muted">@(string.IsNullOrWhiteSpace(Model.Notes) ? "—" : Model.Notes)</dd>
+        </dl>
+    </div>
+
+    <div class="col-md-4 d-flex flex-column align-items-center justify-content-center">
+        <div class="mb-1 fw-bold fs-5">Score</div>
+        <div class="display-4 fw-bold @(Model.Score >= 75 ? "text-success" : Model.Score >= 50 ? "text-warning" : "text-danger")">
+            @Model.Score<span class="fs-5 text-muted">/100</span>
+        </div>
+        <div class="progress w-100 mt-2" style="height: 12px;">
+            <div class="progress-bar @scoreColor" role="progressbar"
+                 style="width: @Model.Score%"
+                 aria-valuenow="@Model.Score" aria-valuemin="0" aria-valuemax="100">
+            </div>
+        </div>
+    </div>
+</div>
+
+<h3>
+    Follow-ups (@Model.FollowUps.Count)
+    @if (overdueFu > 0)
+    {
+        <span class="badge bg-danger ms-1">@overdueFu overdue</span>
+    }
+    @if ((openFu - overdueFu) > 0)
+    {
+        <span class="badge bg-warning text-dark ms-1">@(openFu - overdueFu) open</span>
+    }
+</h3>
+
+@if (TempData["Error"] is string err)
+{
+    <div class="alert alert-danger">@err</div>
+}
+
+@if (!Model.FollowUps.Any())
+{
+    <p class="text-muted">
+        No follow-ups for this inspection.
+        @if (canEdit)
+        {
+            <a asp-controller="FollowUps" asp-action="Create" asp-route-inspectionId="@Model.Id">Add one →</a>
+        }
+    </p>
+}
+else
+{
+    <table class="table table-hover">
+        <thead class="table-dark">
+            <tr>
+                <th>Due Date</th>
+                <th>Time Remaining</th>
+                <th>Status</th>
+                <th>Closed On</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var fu in Model.FollowUps.OrderBy(f => f.Status).ThenBy(f => f.DueDate))
+            {
+                var isOverdue = fu.Status == FollowUpStatus.Open && fu.DueDate < DateTime.Today;
+                var daysLeft = (fu.DueDate - DateTime.Today).Days;
+
+                <tr class="@(isOverdue ? "table-danger" : "")">
+                    <td>@fu.DueDate.ToShortDateString()</td>
+                    <td>
+                        @if (fu.Status == FollowUpStatus.Open)
+                        {
+                            if (isOverdue)
+                            {
+                                <span class="text-danger fw-semibold">@(Math.Abs(daysLeft)) day(s) overdue</span>
+                            }
+                            else
+                            {
+
+                                <span class="text-muted">@daysLeft day(s) left</span>
+                            }
+                        }
+                        else
+                        {
+
+                            <span class="text-muted">—</span>
+                        }
+                    </td>
+                    <td>
+                        <span class="badge @(fu.Status == FollowUpStatus.Closed ? "bg-success" : isOverdue ? "bg-danger" : "bg-warning text-dark")">
+                            @(isOverdue ? "OVERDUE" : fu.Status.ToString())
+                        </span>
+                    </td>
+                    <td>@(fu.ClosedDate.HasValue? fu.ClosedDate.Value.ToShortDateString() : "—")</td>
+                    <td class="d-flex gap-1">
+                        <a asp-controller="FollowUps" asp-action="Details" asp-route-id="@fu.Id"
+                           class="btn btn-sm btn-info">Details</a>
+                        @* Close: Inspector and Admin only *@
+                        @if (canEdit && fu.Status == FollowUpStatus.Open)
+                        {
+                            <form asp-controller="FollowUps" asp-action="Close" asp-route-id="@fu.Id" method="post" style="display:inline">
+                                @Html.AntiForgeryToken()
+                                <button class="btn btn-sm btn-success">Close</button>
+                            </form>
+                        }
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+}
+
+<div class="mt-3">
+    @* Edit: Admin only *@
+    @if (isAdmin)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+    }
+    <a asp-controller="Premises" asp-action="Details" asp-route-id="@Model.PremisesId"
+       class="btn btn-outline-secondary">← Back to Premises</a>
+    <a asp-action="Index" class="btn btn-outline-secondary">All Inspections</a>
 </div>

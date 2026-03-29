@@ -11,6 +11,7 @@ namespace FoodSafety.MVC.Controllers;
 [Authorize]
 public class FollowUpsController(ApplicationDbContext context) : Controller
 {
+    // Viewer, Inspector, Admin
     public async Task<IActionResult> Index(FollowUpStatus? status, bool overdueOnly = false, string? sortBy = null)
     {
         var today = DateTime.Today;
@@ -28,8 +29,8 @@ public class FollowUpsController(ApplicationDbContext context) : Controller
         {
             "due_desc" => query.OrderByDescending(f => f.DueDate),
             "premises" => query.OrderBy(f => f.Inspection.Premises.Name),
-            "status" => query.OrderBy(f => f.Status),
-            _ => query.OrderBy(f => f.DueDate),
+            "status" => query.OrderBy(f => f.Status).ThenBy(f => f.DueDate),
+            _ => query.OrderBy(f => f.Status).ThenBy(f => f.DueDate),
         };
 
         ViewBag.FilterStatus = status;
@@ -39,6 +40,18 @@ public class FollowUpsController(ApplicationDbContext context) : Controller
         return View(await query.ToListAsync());
     }
 
+    // Viewer, Inspector, Admin
+    public async Task<IActionResult> Details(int? id)
+    {
+        if (id is null) return NotFound();
+        var followUp = await context.FollowUps
+            .Include(f => f.Inspection)
+                .ThenInclude(i => i.Premises)
+            .FirstOrDefaultAsync(f => f.Id == id);
+        return followUp is null ? NotFound() : View(followUp);
+    }
+
+    // Inspector, Admin only
     [Authorize(Roles = "Admin,Inspector")]
     public IActionResult Create(int? inspectionId)
     {
@@ -78,6 +91,7 @@ public class FollowUpsController(ApplicationDbContext context) : Controller
         return RedirectToAction(nameof(Index));
     }
 
+    // Inspector, Admin only
     [HttpPost, ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Inspector")]
     public async Task<IActionResult> Close(int id)

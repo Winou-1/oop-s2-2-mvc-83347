@@ -3,6 +3,7 @@
 @{
     ViewData["Title"] = "Follow-Ups";
     bool overdueOnly = ViewBag.OverdueOnly == true;
+    bool canEdit = User.IsInRole("Admin") || User.IsInRole("Inspector");
 }
 
 <h1>Follow-Ups</h1>
@@ -32,7 +33,7 @@
     </div>
     <div class="col-md-2">
         <select name="sortBy" class="form-select">
-            <option value="" selected="@(ViewBag.SortBy == null)">Sort: Due Date Asc</option>
+            <option value="" selected="@(ViewBag.SortBy == null)">Sort: Status then Due Date</option>
             <option value="due_desc" selected="@(ViewBag.SortBy == "due_desc")">Sort: Due Date Desc</option>
             <option value="premises" selected="@(ViewBag.SortBy == "premises")">Sort: Premises A–Z</option>
             <option value="status" selected="@(ViewBag.SortBy == "status")">Sort: Status</option>
@@ -44,27 +45,60 @@
     </div>
 </form>
 
-<p><a asp-action="Create" class="btn btn-success">+ New Follow-Up</a></p>
+@if (canEdit)
+{
+    <p><a asp-action="Create" class="btn btn-success">+ New Follow-Up</a></p>
+}
 
 <table class="table table-hover">
     <thead class="table-dark">
-        <tr><th>Premises</th><th>Inspection Date</th><th>Due Date</th><th>Status</th><th></th></tr>
+        <tr>
+            <th>Premises</th>
+            <th>Inspection Date</th>
+            <th>Due Date</th>
+            <th>Status</th>
+            <th></th>
+        </tr>
     </thead>
     <tbody>
         @foreach (var item in Model)
         {
             var overdue = item.Status == FollowUpStatus.Open && item.DueDate < DateTime.Today;
+            var daysLeft = (item.DueDate - DateTime.Today).Days;
+
             <tr class="@(overdue ? "table-danger" : "")">
                 <td>@item.Inspection?.Premises?.Name</td>
                 <td>@item.Inspection?.InspectionDate.ToShortDateString()</td>
-                <td>@item.DueDate.ToShortDateString()</td>
+                <td>
+                    @item.DueDate.ToShortDateString()
+                    @if (item.Status == FollowUpStatus.Open)
+                    {
+                        if (overdue)
+                        {
+                            <span class="text-danger small ms-1">(@(Math.Abs(daysLeft)) day(s) overdue)</span>
+                        }
+                        else
+                        {
+
+                            <span class="text-muted small ms-1">(@daysLeft day(s) left)</span>
+                        }
+                    }
+                </td>
                 <td>
                     <span class="badge @(item.Status == FollowUpStatus.Closed ? "bg-success" : overdue ? "bg-danger" : "bg-warning text-dark")">
                         @(overdue ? "OVERDUE" : item.Status.ToString())
                     </span>
                 </td>
-                <td>
-                    @if (item.Status == FollowUpStatus.Open)
+                <td class="d-flex gap-1">
+                    @* Details button — visible to all roles *@
+                    <a asp-action="Details" asp-route-id="@item.Id"
+                       class="btn btn-sm btn-info">Details</a>
+                    <a asp-controller="Premises" asp-action="Details"
+                       asp-route-id="@item.Inspection?.Premises?.Id"
+                       class="btn btn-sm btn-outline-secondary">Premises</a>
+
+                    @* Close button — Inspector and Admin only *@
+                    @if (canEdit && item.Status == FollowUpStatus.Open)
                     {
                         <form asp-action="Close" asp-route-id="@item.Id" method="post" style="display:inline">
                             @Html.AntiForgeryToken()

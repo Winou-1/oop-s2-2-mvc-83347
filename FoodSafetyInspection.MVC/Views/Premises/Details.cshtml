@@ -1,42 +1,175 @@
 ﻿@model FoodSafetyInspection.Domain.Premises
-
+@using FoodSafetyInspection.Domain
 @{
-    ViewData["Title"] = "Details";
+    ViewData["Title"] = "Details – " + Model.Name;
+    bool isAdmin = User.IsInRole("Admin");
+    bool canEdit = User.IsInRole("Admin") || User.IsInRole("Inspector");
 }
 
-<h1>Details</h1>
-
-<div>
-    <h4>Premises</h4>
-    <hr />
-    <dl class="row">
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Name)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Name)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Address)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Address)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.Town)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.Town)
-        </dd>
-        <dt class = "col-sm-2">
-            @Html.DisplayNameFor(model => model.RiskRating)
-        </dt>
-        <dd class = "col-sm-10">
-            @Html.DisplayFor(model => model.RiskRating)
-        </dd>
-    </dl>
+<div class="d-flex justify-content-between align-items-start mb-2">
+    <h1>@Model.Name</h1>
+    @if (canEdit)
+    {
+        <div class="d-flex gap-2">
+            <a asp-controller="Inspections" asp-action="Create"
+               class="btn btn-primary">+ New Inspection</a>
+            <a asp-controller="FollowUps" asp-action="Create"
+               class="btn btn-outline-primary">+ New Follow-Up</a>
+        </div>
+    }
 </div>
-<div>
-    <a asp-action="Edit" asp-route-id="@Model?.Id">Edit</a> |
-    <a asp-action="Index">Back to List</a>
+<hr />
+
+<dl class="row mb-4">
+    <dt class="col-sm-2">Address</dt>
+    <dd class="col-sm-10">@Model.Address</dd>
+
+    <dt class="col-sm-2">Town</dt>
+    <dd class="col-sm-10">@Model.Town</dd>
+
+    <dt class="col-sm-2">Risk Rating</dt>
+    <dd class="col-sm-10">
+        <span class="badge @(Model.RiskRating == RiskRating.High ? "bg-danger" :
+                                                        Model.RiskRating == RiskRating.Medium ? "bg-warning text-dark" : "bg-success")">
+            @Model.RiskRating
+        </span>
+    </dd>
+</dl>
+
+<h3>Inspections (@Model.Inspections.Count)</h3>
+
+@if (!Model.Inspections.Any())
+{
+    <p class="text-muted">No inspections recorded yet.</p>
+}
+else
+{
+    foreach (var insp in Model.Inspections.OrderByDescending(i => i.InspectionDate))
+    {
+        var openFu = insp.FollowUps.Count(f => f.Status == FollowUpStatus.Open);
+        var overdueFu = insp.FollowUps.Count(f => f.Status == FollowUpStatus.Open && f.DueDate < DateTime.Today);
+        var closedFu = insp.FollowUps.Count(f => f.Status == FollowUpStatus.Closed);
+        var daysAgo = (DateTime.Today - insp.InspectionDate).Days;
+
+        <div class="card mb-3 shadow-sm">
+            <div class="card-header d-flex justify-content-between align-items-center
+                @(insp.Outcome == InspectionOutcome.Pass ? "bg-success text-white" : "bg-danger text-white")">
+                <div>
+                    <strong>@insp.InspectionDate.ToShortDateString()</strong>
+                    <span class="ms-2 opacity-75 small">@daysAgo day(s) ago</span>
+                </div>
+                <div class="d-flex align-items-center gap-2">
+                    <span class="badge bg-white text-dark">Score: @insp.Score / 100</span>
+                    <span class="badge bg-white @(insp.Outcome == InspectionOutcome.Pass ? "text-success" : "text-danger")">
+                        @insp.Outcome
+                    </span>
+                    @* + Follow-Up: Inspector and Admin only *@
+                    @if (canEdit)
+                    {
+                        <a asp-controller="FollowUps" asp-action="Create" asp-route-inspectionId="@insp.Id"
+                           class="btn btn-sm btn-light">+ Follow-Up</a>
+                    }
+                    <a asp-controller="Inspections" asp-action="Details" asp-route-id="@insp.Id"
+                       class="btn btn-sm btn-light">Details</a>
+                </div>
+            </div>
+
+            @if (!string.IsNullOrWhiteSpace(insp.Notes))
+            {
+                <div class="card-body pb-1 pt-2">
+                    <p class="text-muted small mb-0"><em>@insp.Notes</em></p>
+                </div>
+            }
+
+            @if (insp.FollowUps.Any())
+            {
+                <div class="card-body pt-2">
+                    <h6 class="mb-2">
+                        Follow-ups
+                        @if (overdueFu > 0)
+                        {
+                            <span class="badge bg-danger ms-1">@overdueFu overdue</span>
+                        }
+                        @if ((openFu - overdueFu) > 0)
+                        {
+                            <span class="badge bg-warning text-dark ms-1">@(openFu - overdueFu) open</span>
+                        }
+                        @if (closedFu > 0)
+                        {
+                            <span class="badge bg-success ms-1">@closedFu closed</span>
+                        }
+                    </h6>
+                    <table class="table table-sm table-bordered mb-0">
+                        <thead class="table-secondary">
+                            <tr>
+                                <th>Due Date</th>
+                                <th>Status</th>
+                                <th>Closed On</th>
+                                <th></th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var fu in insp.FollowUps.OrderBy(f => f.DueDate))
+                            {
+                                var isOverdue = fu.Status == FollowUpStatus.Open && fu.DueDate < DateTime.Today;
+                                var daysLeft = (fu.DueDate - DateTime.Today).Days;
+
+                                <tr class="@(isOverdue ? "table-danger" : "")">
+                                    <td>
+                                        @fu.DueDate.ToShortDateString()
+                                        @if (fu.Status == FollowUpStatus.Open)
+                                        {
+                                            if (isOverdue)
+                                            {
+                                                <span class="text-danger small ms-1">(@(Math.Abs(daysLeft)) day(s) overdue)</span>
+                                            }
+                                            else
+                                            {
+
+                                                <span class="text-muted small ms-1">(@daysLeft day(s) left)</span>
+                                            }
+                                        }
+                                    </td>
+                                    <td>
+                                        <span class="badge @(fu.Status == FollowUpStatus.Closed ? "bg-success" : isOverdue ? "bg-danger" : "bg-warning text-dark")">
+                                            @(isOverdue ? "OVERDUE" : fu.Status.ToString())
+                                        </span>
+                                    </td>
+                                    <td>@(fu.ClosedDate.HasValue? fu.ClosedDate.Value.ToShortDateString() : "—")</td>
+                                    <td class="d-flex gap-1">
+                                        <a asp-controller="FollowUps" asp-action="Details" asp-route-id="@fu.Id"
+                                           class="btn btn-sm btn-info">Details</a>
+                                        @* Close: Inspector and Admin only *@
+                                        @if (canEdit && fu.Status == FollowUpStatus.Open)
+                                        {
+                                            <form asp-controller="FollowUps" asp-action="Close" asp-route-id="@fu.Id" method="post" style="display:inline">
+                                                @Html.AntiForgeryToken()
+                                                <button class="btn btn-sm btn-success">Close</button>
+                                            </form>
+                                        }
+                                    </td>
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            }
+            else
+            {
+                <div class="card-body pt-1 pb-2">
+                    <p class="text-muted small mb-0">No follow-ups for this inspection.</p>
+                </div>
+            }
+        </div>
+    }
+}
+
+<div class="mt-3">
+    @* Edit: Admin only *@
+    @if (isAdmin)
+    {
+        <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-warning">Edit</a>
+        <a asp-action="Delete" asp-route-id="@Model.Id" class="btn btn-danger">Delete</a>
+    }
+    <a asp-action="Index" class="btn btn-outline-secondary">Back to List</a>
 </div>
