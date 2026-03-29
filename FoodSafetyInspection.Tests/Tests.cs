@@ -129,7 +129,7 @@ public class Tests
         await ctx.SaveChangesAsync();
 
         var controller = new PremisesController(ctx);
-        var result = await controller.Index() as ViewResult;
+        var result = await controller.Index(null, null, null, null) as ViewResult;
 
         var model = Assert.IsAssignableFrom<IEnumerable<Premises>>(result!.Model);
         Assert.Equal(2, model.Count());
@@ -210,7 +210,7 @@ public class Tests
         var (_, _) = await SeedBasicAsync(ctx);
 
         var controller = new InspectionsController(ctx);
-        var result = await controller.Index() as ViewResult;
+        var result = await controller.Index(null, null, null, false) as ViewResult;
 
         var model = Assert.IsAssignableFrom<IEnumerable<Inspection>>(result!.Model);
         Assert.Single(model);
@@ -273,7 +273,7 @@ public class Tests
         await ctx.SaveChangesAsync();
 
         var controller = new FollowUpsController(ctx);
-        var result = await controller.Index() as ViewResult;
+        var result = await controller.Index(null, false, null) as ViewResult;
 
         var model = Assert.IsAssignableFrom<IEnumerable<FollowUp>>(result!.Model);
         Assert.Single(model);
