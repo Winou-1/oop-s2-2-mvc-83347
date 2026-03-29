@@ -1,5 +1,4 @@
-﻿
-using FoodSafetyInspection.Domain;
+﻿using FoodSafetyInspection.Domain;
 using FoodSafetyInspection.MVC.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,13 +11,37 @@ namespace FoodSafety.MVC.Controllers;
 [Authorize]
 public class InspectionsController(ApplicationDbContext context) : Controller
 {
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(string? search, InspectionOutcome? outcome, string? sortBy, bool monthOnly = false)
     {
-        var inspections = await context.Inspections
-            .Include(i => i.Premises)
-            .OrderByDescending(i => i.InspectionDate)
-            .ToListAsync();
-        return View(inspections);
+        var today = DateTime.Today;
+        var monthStart = new DateTime(today.Year, today.Month, 1);
+
+        var query = context.Inspections.Include(i => i.Premises).AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(i => i.Premises.Name.Contains(search) || (i.Notes != null && i.Notes.Contains(search)));
+
+        if (outcome.HasValue)
+            query = query.Where(i => i.Outcome == outcome.Value);
+
+        if (monthOnly)
+            query = query.Where(i => i.InspectionDate >= monthStart);
+
+        query = sortBy switch
+        {
+            "date_asc" => query.OrderBy(i => i.InspectionDate),
+            "score" => query.OrderByDescending(i => i.Score),
+            "score_asc" => query.OrderBy(i => i.Score),
+            "premises" => query.OrderBy(i => i.Premises.Name),
+            _ => query.OrderByDescending(i => i.InspectionDate),
+        };
+
+        ViewBag.Search = search;
+        ViewBag.Outcome = outcome;
+        ViewBag.SortBy = sortBy;
+        ViewBag.MonthOnly = monthOnly;
+
+        return View(await query.ToListAsync());
     }
 
     public async Task<IActionResult> Details(int? id)

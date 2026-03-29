@@ -1,5 +1,4 @@
-﻿
-using FoodSafetyInspection.Domain;
+﻿using FoodSafetyInspection.Domain;
 using FoodSafetyInspection.MVC.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -12,22 +11,41 @@ namespace FoodSafety.MVC.Controllers;
 [Authorize]
 public class FollowUpsController(ApplicationDbContext context) : Controller
 {
-    public async Task<IActionResult> Index()
+    public async Task<IActionResult> Index(FollowUpStatus? status, bool overdueOnly = false, string? sortBy = null)
     {
-        var followUps = await context.FollowUps
+        var today = DateTime.Today;
+        var query = context.FollowUps
             .Include(f => f.Inspection).ThenInclude(i => i.Premises)
-            .OrderBy(f => f.DueDate)
-            .ToListAsync();
-        return View(followUps);
+            .AsQueryable();
+
+        if (status.HasValue)
+            query = query.Where(f => f.Status == status.Value);
+
+        if (overdueOnly)
+            query = query.Where(f => f.Status == FollowUpStatus.Open && f.DueDate < today);
+
+        query = sortBy switch
+        {
+            "due_desc" => query.OrderByDescending(f => f.DueDate),
+            "premises" => query.OrderBy(f => f.Inspection.Premises.Name),
+            "status" => query.OrderBy(f => f.Status),
+            _ => query.OrderBy(f => f.DueDate),
+        };
+
+        ViewBag.FilterStatus = status;
+        ViewBag.OverdueOnly = overdueOnly;
+        ViewBag.SortBy = sortBy;
+
+        return View(await query.ToListAsync());
     }
 
     [Authorize(Roles = "Admin,Inspector")]
     public IActionResult Create(int? inspectionId)
     {
         ViewData["InspectionId"] = new SelectList(
-    context.Inspections.Include(i => i.Premises)
-        .Select(i => new { i.Id, Display = i.Premises.Name + " – " + i.InspectionDate.ToShortDateString() }),
-    "Id", "Display", inspectionId);
+            context.Inspections.Include(i => i.Premises)
+                .Select(i => new { i.Id, Display = i.Premises.Name + " – " + i.InspectionDate.ToShortDateString() }),
+            "Id", "Display", inspectionId);
 
         return View(new FollowUp { InspectionId = inspectionId ?? 0, DueDate = DateTime.Today.AddDays(14) });
     }
@@ -36,7 +54,6 @@ public class FollowUpsController(ApplicationDbContext context) : Controller
     [Authorize(Roles = "Admin,Inspector")]
     public async Task<IActionResult> Create([Bind("InspectionId,DueDate,Status")] FollowUp followUp)
     {
-        // Business rule: DueDate must be after InspectionDate
         var inspection = await context.Inspections.FindAsync(followUp.InspectionId);
         if (inspection is not null && followUp.DueDate < inspection.InspectionDate)
         {
@@ -48,9 +65,10 @@ public class FollowUpsController(ApplicationDbContext context) : Controller
         if (!ModelState.IsValid)
         {
             ViewData["InspectionId"] = new SelectList(
-    context.Inspections.Include(i => i.Premises)
-        .Select(i => new { i.Id, Display = i.Premises.Name + " – " + i.InspectionDate.ToShortDateString() }),
-    "Id", "Display", followUp.InspectionId);
+                context.Inspections.Include(i => i.Premises)
+                    .Select(i => new { i.Id, Display = i.Premises.Name + " – " + i.InspectionDate.ToShortDateString() }),
+                "Id", "Display", followUp.InspectionId);
+            return View(followUp);
         }
 
         context.Add(followUp);

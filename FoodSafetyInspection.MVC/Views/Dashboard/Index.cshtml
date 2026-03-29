@@ -31,28 +31,60 @@
 </form>
 
 <div class="row g-3">
+    @* Inspections This Month *@
     <div class="col-md-4">
-        <div class="card text-bg-primary">
-            <div class="card-body">
-                <h5 class="card-title">Inspections This Month</h5>
-                <p class="display-4">@Model.InspectionsThisMonth</p>
+        <a asp-controller="Inspections" asp-action="Index"
+           asp-route-monthOnly="true"
+           class="text-decoration-none">
+            <div class="card text-bg-primary h-100 shadow-sm card-hover">
+                <div class="card-body">
+                    <h5 class="card-title">Inspections This Month</h5>
+                    <p class="display-4 mb-0">@Model.InspectionsThisMonth</p>
+                    <small class="opacity-75">Click to view →</small>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
+
+    @* Failed This Month *@
     <div class="col-md-4">
-        <div class="card text-bg-danger">
-            <div class="card-body">
-                <h5 class="card-title">Failed This Month</h5>
-                <p class="display-4">@Model.FailedThisMonth</p>
+        <a asp-controller="Inspections" asp-action="Index"
+           asp-route-monthOnly="true"
+           asp-route-outcome="Fail"
+           class="text-decoration-none">
+            <div class="card text-bg-danger h-100 shadow-sm card-hover">
+                <div class="card-body">
+                    <h5 class="card-title">Failed This Month</h5>
+                    <p class="display-4 mb-0">@Model.FailedThisMonth</p>
+                    <small class="opacity-75">Click to view →</small>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
+
+    @* Overdue Follow-Ups *@
     <div class="col-md-4">
-        <div class="card text-bg-warning">
-            <div class="card-body">
-                <h5 class="card-title">Overdue Follow-Ups</h5>
-                <p class="display-4">@Model.OverdueFollowUps</p>
+        <a asp-controller="FollowUps" asp-action="Index"
+           asp-route-overdueOnly="true"
+           class="text-decoration-none">
+            <div class="card text-bg-warning h-100 shadow-sm card-hover">
+                <div class="card-body">
+                    <h5 class="card-title">Overdue Follow-Ups</h5>
+                    <p class="display-4 mb-0">@Model.OverdueFollowUps</p>
+                    <small class="opacity-75">Click to view →</small>
+                </div>
             </div>
-        </div>
+        </a>
     </div>
 </div>
+
+<style>
+    .card-hover {
+        transition: transform 0.15s ease, box-shadow 0.15s ease;
+        cursor: pointer;
+    }
+    .card-hover:hover {
+        transform: translateY(-3px);
+        box-shadow: 0 6px 20px rgba(0,0,0,0.15) !important;
+    }
+</style>

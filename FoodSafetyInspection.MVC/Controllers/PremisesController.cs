@@ -1,5 +1,4 @@
-﻿
-using FoodSafetyInspection.Domain;
+﻿using FoodSafetyInspection.Domain;
 using FoodSafetyInspection.MVC.Data;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -11,11 +10,38 @@ namespace FoodSafety.MVC.Controllers;
 [Authorize]
 public class PremisesController(ApplicationDbContext context) : Controller
 {
-    // GET: Premises
-    public async Task<IActionResult> Index()
-        => View(await context.Premises.OrderBy(p => p.Name).ToListAsync());
+    public async Task<IActionResult> Index(string? search, string? town, RiskRating? riskRating, string? sortBy)
+    {
+        var query = context.Premises.AsQueryable();
 
-    // GET: Premises/Details/5
+        if (!string.IsNullOrWhiteSpace(search))
+            query = query.Where(p => p.Name.Contains(search) || p.Address.Contains(search));
+
+        if (!string.IsNullOrWhiteSpace(town))
+            query = query.Where(p => p.Town == town);
+
+        if (riskRating.HasValue)
+            query = query.Where(p => p.RiskRating == riskRating.Value);
+
+        query = sortBy switch
+        {
+            "town" => query.OrderBy(p => p.Town),
+            "risk" => query.OrderBy(p => p.RiskRating),
+            "risk_desc" => query.OrderByDescending(p => p.RiskRating),
+            _ => query.OrderBy(p => p.Name),
+        };
+
+        var towns = await context.Premises.Select(p => p.Town).Distinct().OrderBy(t => t).ToListAsync();
+
+        ViewBag.Search = search;
+        ViewBag.FilterTown = town;
+        ViewBag.FilterRisk = riskRating;
+        ViewBag.SortBy = sortBy;
+        ViewBag.Towns = towns;
+
+        return View(await query.ToListAsync());
+    }
+
     public async Task<IActionResult> Details(int? id)
     {
         if (id is null) return NotFound();
@@ -25,11 +51,9 @@ public class PremisesController(ApplicationDbContext context) : Controller
         return premises is null ? NotFound() : View(premises);
     }
 
-    // GET: Premises/Create
     [Authorize(Roles = "Admin,Inspector")]
     public IActionResult Create() => View();
 
-    // POST: Premises/Create
     [HttpPost, ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin,Inspector")]
     public async Task<IActionResult> Create([Bind("Name,Address,Town,RiskRating")] Premises premises)
@@ -41,7 +65,6 @@ public class PremisesController(ApplicationDbContext context) : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // GET: Premises/Edit/5
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int? id)
     {
@@ -50,7 +73,6 @@ public class PremisesController(ApplicationDbContext context) : Controller
         return premises is null ? NotFound() : View(premises);
     }
 
-    // POST: Premises/Edit/5
     [HttpPost, ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Edit(int id, [Bind("Id,Name,Address,Town,RiskRating")] Premises premises)
@@ -72,7 +94,6 @@ public class PremisesController(ApplicationDbContext context) : Controller
         return RedirectToAction(nameof(Index));
     }
 
-    // GET: Premises/Delete/5
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> Delete(int? id)
     {
@@ -81,7 +102,6 @@ public class PremisesController(ApplicationDbContext context) : Controller
         return premises is null ? NotFound() : View(premises);
     }
 
-    // POST: Premises/Delete/5
     [HttpPost, ActionName("Delete"), ValidateAntiForgeryToken]
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)

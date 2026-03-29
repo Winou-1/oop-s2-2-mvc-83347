@@ -1,7 +1,10 @@
 ﻿@model IEnumerable<FoodSafetyInspection.Domain.Premises>
+@using FoodSafetyInspection.Domain
 @{
     ViewData["Title"] = "Premises";
+    string? currentSort = ViewBag.SortBy;
 }
+
 <h1>Premises</h1>
 
 @if (TempData["Error"] is string err)
@@ -9,15 +12,51 @@
     <div class="alert alert-danger">@err</div>
 }
 
+<form method="get" class="row g-2 mb-3">
+    <div class="col-md-4">
+        <input name="search" value="@ViewBag.Search" class="form-control" placeholder="Search name or address..." />
+    </div>
+    <div class="col-md-2">
+        <select name="town" class="form-select">
+            <option value="">All Towns</option>
+            @foreach (var t in (List<string>)ViewBag.Towns)
+            {
+                <option value="@t" selected="@(t == (string?)ViewBag.FilterTown)">@t</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select name="riskRating" class="form-select">
+            <option value="">All Risks</option>
+            @foreach (RiskRating r in Enum.GetValues(typeof(RiskRating)))
+            {
+                <option value="@r" selected="@(r == (RiskRating?)ViewBag.FilterRisk)">@r</option>
+            }
+        </select>
+    </div>
+    <div class="col-md-2">
+        <select name="sortBy" class="form-select">
+            <option value="" selected="@(currentSort == null)">Sort: Name A–Z</option>
+            <option value="town" selected="@(currentSort == "town")">Sort: Town</option>
+            <option value="risk" selected="@(currentSort == "risk")">Sort: Risk Low→High</option>
+            <option value="risk_desc" selected="@(currentSort == "risk_desc")">Sort: Risk High→Low</option>
+        </select>
+    </div>
+    <div class="col-auto">
+        <button class="btn btn-primary">Filter</button>
+        <a asp-action="Index" class="btn btn-outline-secondary">Clear</a>
+    </div>
+</form>
+
 <p><a asp-action="Create" class="btn btn-success">+ Add Premises</a></p>
 
 <table class="table table-hover">
     <thead class="table-dark">
         <tr>
-            <th>Name</th>
+            <th><a asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-town="@ViewBag.FilterTown" asp-route-riskRating="@ViewBag.FilterRisk" asp-route-sortBy="" class="text-white text-decoration-none">Name ↕</a></th>
             <th>Address</th>
-            <th>Town</th>
-            <th>Risk Rating</th>
+            <th><a asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-sortBy="town" class="text-white text-decoration-none">Town ↕</a></th>
+            <th><a asp-action="Index" asp-route-search="@ViewBag.Search" asp-route-sortBy="@(currentSort == "risk" ? "risk_desc" : "risk")" class="text-white text-decoration-none">Risk ↕</a></th>
             <th></th>
         </tr>
     </thead>
@@ -29,7 +68,7 @@
                 <td>@item.Address</td>
                 <td>@item.Town</td>
                 <td>
-                    <span class="badge @(item.RiskRating == FoodSafetyInspection.Domain.RiskRating.High ? "bg-danger" : item.RiskRating == FoodSafetyInspection.Domain.RiskRating.Medium ? "bg-warning text-dark" : "bg-success")">
+                    <span class="badge @(item.RiskRating == RiskRating.High ? "bg-danger" : item.RiskRating == RiskRating.Medium ? "bg-warning text-dark" : "bg-success")">
                         @item.RiskRating
                     </span>
                 </td>
@@ -42,3 +81,8 @@
         }
     </tbody>
 </table>
+
+@if (!Model.Any())
+{
+    <p class="text-muted">No premises found matching your criteria.</p>
+}
