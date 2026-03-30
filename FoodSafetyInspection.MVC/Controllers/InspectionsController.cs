@@ -124,6 +124,7 @@ public class InspectionsController(ApplicationDbContext context) : Controller
         if (id is null) return NotFound();
         var inspection = await context.Inspections
             .Include(i => i.Premises)
+            .Include(i => i.FollowUps)
             .FirstOrDefaultAsync(i => i.Id == id);
         return inspection is null ? NotFound() : View(inspection);
     }
@@ -132,13 +133,23 @@ public class InspectionsController(ApplicationDbContext context) : Controller
     [Authorize(Roles = "Admin")]
     public async Task<IActionResult> DeleteConfirmed(int id)
     {
-        var inspection = await context.Inspections.FindAsync(id);
-        if (inspection is not null)
-        {
-            context.Inspections.Remove(inspection);
-            await context.SaveChangesAsync();
-            Log.Information("Inspection deleted: {InspectionId}", id);
-        }
+        var inspection = await context.Inspections
+            .Include(i => i.FollowUps)
+            .FirstOrDefaultAsync(i => i.Id == id);
+
+        if (inspection is null) return NotFound();
+
+        int followUpCount = inspection.FollowUps.Count;
+
+        context.FollowUps.RemoveRange(inspection.FollowUps);
+        context.Inspections.Remove(inspection);
+
+        await context.SaveChangesAsync();
+
+        Log.Information(
+            "Inspection deleted (cascade): {InspectionId} for PremisesId {PremisesId} — {FollowUpCount} follow-up(s) also removed",
+            id, inspection.PremisesId, followUpCount);
+
         return RedirectToAction(nameof(Index));
     }
 }

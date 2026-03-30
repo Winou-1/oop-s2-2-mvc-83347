@@ -7,14 +7,14 @@
     bool hasDependants = inspectionCount > 0;
 }
 
-<h1 class="text-danger">⚠ Delete Premises</h1>
+<h1 class="text-danger">Delete Premises</h1>
 <hr />
 
 @* ── Danger banner when linked data exists ── *@
 @if (hasDependants)
 {
     <div class="alert alert-danger border border-danger-subtle shadow-sm mb-4">
-        <h5 class="alert-heading fw-bold">🗑 This will permanently delete:</h5>
+        <h5 class="alert-heading fw-bold">This will permanently delete:</h5>
         <ul class="mb-0 mt-2">
             <li><strong>1</strong> premises — <em>@Model.Name</em></li>
             <li>
@@ -80,7 +80,7 @@ else
     <button type="submit" class="btn btn-danger me-2">
         @if (hasDependants)
         {
-            <span>🗑 Yes, delete everything</span>
+            <span>Yes, delete everything</span>
         }
         else
         {
