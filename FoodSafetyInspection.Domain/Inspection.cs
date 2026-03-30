@@ -12,9 +12,11 @@ namespace FoodSafetyInspection.Domain
         [ValidateNever]
         public Premises Premises { get; set; } = null!;
 
+        [Required]
         public DateTime InspectionDate { get; set; }
 
-        public int Score { get; set; }          // 0–100
+        [Range(0, 100, ErrorMessage = "Score must be between 0 and 100.")]
+        public int Score { get; set; }
 
         public InspectionOutcome Outcome { get; set; }
 

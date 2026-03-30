@@ -57,10 +57,14 @@ public class InspectionsController(ApplicationDbContext context) : Controller
     }
 
     [Authorize(Roles = "Admin,Inspector")]
-    public IActionResult Create()
+    public IActionResult Create(int? premisesId)
     {
-        ViewData["PremisesId"] = new SelectList(context.Premises, "Id", "Name");
-        return View(new Inspection { InspectionDate = DateTime.Today });
+        ViewData["PremisesId"] = new SelectList(context.Premises, "Id", "Name", premisesId);
+        return View(new Inspection
+        {
+            InspectionDate = DateTime.Today,
+            PremisesId = premisesId ?? 0
+        });
     }
 
     [HttpPost, ValidateAntiForgeryToken]

@@ -1,4 +1,5 @@
 using FoodSafetyInspection.MVC.Data;
+using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
 using Serilog;
@@ -6,7 +7,6 @@ using Serilog.Events;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// CONFIG SERILOG
 Log.Logger = new LoggerConfiguration()
     .MinimumLevel.Information()
     .MinimumLevel.Override("Microsoft", LogEventLevel.Warning)
@@ -19,7 +19,6 @@ Log.Logger = new LoggerConfiguration()
 
 builder.Host.UseSerilog();
 
-// DB
 var connectionString = builder.Configuration.GetConnectionString("DefaultConnection")
     ?? throw new InvalidOperationException("Connection string not found");
 
@@ -28,7 +27,6 @@ builder.Services.AddDbContext<ApplicationDbContext>(o =>
 
 builder.Services.AddDatabaseDeveloperPageExceptionFilter();
 
-// Identity
 builder.Services
     .AddDefaultIdentity<IdentityUser>(o => o.SignIn.RequireConfirmedAccount = false)
     .AddRoles<IdentityRole>()
@@ -38,14 +36,37 @@ builder.Services.AddControllersWithViews();
 
 var app = builder.Build();
 
-// Middleware
-app.UseSerilogRequestLogging();
+app.UseSerilogRequestLogging(opts =>
+{
+    opts.EnrichDiagnosticContext = (diag, ctx) =>
+    {
+        diag.Set("UserName", ctx.User?.Identity?.Name ?? "anonymous");
+        diag.Set("RequestHost", ctx.Request.Host.Value);
+    };
+});
 
 if (app.Environment.IsDevelopment())
+{
     app.UseMigrationsEndPoint();
+}
 else
 {
-    app.UseExceptionHandler("/Home/Error");
+    app.UseExceptionHandler(errorApp =>
+    {
+        errorApp.Run(async ctx =>
+        {
+            var exFeature = ctx.Features.Get<IExceptionHandlerFeature>();
+            if (exFeature?.Error is not null)
+            {
+                var userName = ctx.User?.Identity?.Name ?? "anonymous";
+                Log.Error(exFeature.Error,
+                    "Unhandled exception. Path={Path} User={UserName}",
+                    ctx.Request.Path, userName);
+            }
+            ctx.Response.Redirect("/Home/Error");
+            await Task.CompletedTask;
+        });
+    });
     app.UseHsts();
 }
 
@@ -59,6 +80,8 @@ app.MapControllerRoute(
     "{controller=Dashboard}/{action=Index}/{id?}");
 
 app.MapRazorPages();
+
 using (var scope = app.Services.CreateScope())
     await SeedData.InitialiseAsync(scope.ServiceProvider);
+
 app.Run();
