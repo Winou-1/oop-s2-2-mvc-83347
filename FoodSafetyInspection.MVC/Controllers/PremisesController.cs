@@ -101,7 +101,10 @@ public class PremisesController(ApplicationDbContext context) : Controller
     public async Task<IActionResult> Delete(int? id)
     {
         if (id is null) return NotFound();
-        var premises = await context.Premises.FirstOrDefaultAsync(p => p.Id == id);
+        var premises = await context.Premises
+            .Include(p => p.Inspections)
+                .ThenInclude(i => i.FollowUps)
+            .FirstOrDefaultAsync(p => p.Id == id);
         return premises is null ? NotFound() : View(premises);
     }
 
@@ -111,16 +114,26 @@ public class PremisesController(ApplicationDbContext context) : Controller
     {
         var premises = await context.Premises
             .Include(p => p.Inspections)
+                .ThenInclude(i => i.FollowUps)
             .FirstOrDefaultAsync(p => p.Id == id);
+
         if (premises is null) return NotFound();
-        if (premises.Inspections.Any())
-        {
-            TempData["Error"] = "Cannot delete premises with existing inspections.";
-            return RedirectToAction(nameof(Index));
-        }
+
+        int inspectionCount = premises.Inspections.Count;
+        int followUpCount = premises.Inspections.Sum(i => i.FollowUps.Count);
+
+        foreach (var inspection in premises.Inspections)
+            context.FollowUps.RemoveRange(inspection.FollowUps);
+
+        context.Inspections.RemoveRange(premises.Inspections);
         context.Premises.Remove(premises);
+
         await context.SaveChangesAsync();
-        Log.Information("Premises deleted: {PremisesId}", id);
+
+        Log.Information(
+            "Premises deleted (cascade): {PremisesId} {Name} — {InspectionCount} inspection(s) and {FollowUpCount} follow-up(s) also removed",
+            id, premises.Name, inspectionCount, followUpCount);
+
         return RedirectToAction(nameof(Index));
     }
 }
