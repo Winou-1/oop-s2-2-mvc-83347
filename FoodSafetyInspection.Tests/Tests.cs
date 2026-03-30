@@ -175,17 +175,26 @@ public class Tests
     }
 
     [Fact]
-    public async Task PremisesController_Delete_WithInspections_ShowsError()
+    public async Task PremisesController_Delete_WithInspections_DeletesEverything()
     {
         await using var ctx = CreateCtx();
-        var (premises, _) = await SeedBasicAsync(ctx);
+        var (premises, inspection) = await SeedBasicAsync(ctx);
+        ctx.FollowUps.Add(new FollowUp
+        {
+            InspectionId = inspection.Id,
+            DueDate = DateTime.Today.AddDays(7),
+            Status = FollowUpStatus.Open
+        });
+        await ctx.SaveChangesAsync();
 
         var controller = new PremisesController(ctx);
         controller.TempData = MakeTempData();
         var result = await controller.DeleteConfirmed(premises.Id) as RedirectToActionResult;
 
         Assert.Equal("Index", result!.ActionName);
-        Assert.Equal(1, await ctx.Premises.CountAsync());
+        Assert.Equal(0, await ctx.Premises.CountAsync());
+        Assert.Equal(0, await ctx.Inspections.CountAsync());
+        Assert.Equal(0, await ctx.FollowUps.CountAsync());
     }
 
     [Fact]
